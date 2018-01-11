@@ -1,13 +1,11 @@
 package com.company;
-import java.io.IOException;
+import java.io.*;
 import java.util.Properties;
 import java.util.Stack;
-import java.io.FileInputStream;
+
 import org.json.*;
 import java.net.URL;
 import java.net.HttpURLConnection;
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
 
 public class Main {
 
@@ -18,7 +16,7 @@ public class Main {
     private static int perPage;
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         setupEndpoint();
 	    JSONArray[] json_array = setupData();
 
@@ -35,7 +33,7 @@ public class Main {
 
     //Here, I'll grab the information from the config file; the config file will let me alternate
     //between the challenges without hard coding the endpoints
-    private static void setupEndpoint(){
+    private static void setupEndpoint() throws FileNotFoundException{
         configFile = new Properties();
         try{
 
@@ -44,8 +42,7 @@ public class Main {
 
         } catch(IOException e){
 
-            e.printStackTrace();
-            System.exit(-1);
+            throw new FileNotFoundException("Couldn't find the config.properties file");
 
         }
 
@@ -64,7 +61,7 @@ public class Main {
 
     //setupData function will deal with getting the JSON objects
     //It will GET the objects and return an array of the objects
-    private static JSONArray[] setupData(){
+    private static JSONArray[] setupData() throws Exception{
         int firstPage = 1;
         String pag = "pagination";
         String per = "per_page";
@@ -75,25 +72,26 @@ public class Main {
 
         try {
             JSONObject json = getRequest(firstPage);
-            JSONObject pagination = new JSONObject(json.get(pag));
+            JSONObject pagination = json.getJSONObject(pag);
             double per_page = pagination.getDouble(per);
-            double total = pagination.getDouble(tot);
-            pages = (int) Math.ceil(total / per_page);
-            total = (int) total;
+            double total_value = pagination.getDouble(tot);
+            pages = (int) Math.ceil(total_value / per_page);
+            total = (int) total_value;
             perPage = (int) per_page;
 
             arr = new JSONArray[pages];
 
-            arr[0] = new JSONArray(json.get(menus));
+            arr[0] = json.getJSONArray(menus);
 
-            for(int i = 1; i <= pages; i++){
-                json = getRequest(i+1); //We've already done the first page, so next is the i+1 page
-                arr[i] = new JSONArray(json.get(menus));
+            //We've already done the first page, to continue to page 2
+            for(int i = 2; i <= pages; i++){
+                json = getRequest(i);
+                arr[i-1] = json.getJSONArray(menus);
             }
 
         } catch(Exception e){
             e.printStackTrace();
-            System.exit(-1);
+            throw new Exception("Exception in setupData function");
         }
 
         return arr;
@@ -127,7 +125,7 @@ public class Main {
 
     }
 
-    private static Stack<Integer> findRootNodes(JSONArray[] arr){
+    private static Stack<Integer> findRootNodes(JSONArray[] arr) throws JSONException{
         Stack<Integer> stack = new Stack<Integer>();
 
         try {
@@ -144,14 +142,13 @@ public class Main {
                 }
             }
         }catch(JSONException e){
-            e.printStackTrace();
-            System.exit(-1);
+            throw new JSONException("Error with parsing root jsons");
         }
 
         return stack;
     }
 
-    private static JSONObject DFS_Validation(JSONArray[] arr, Stack<Integer> roots){
+    private static JSONObject DFS_Validation(JSONArray[] arr, Stack<Integer> roots) throws JSONException{
         JSONObject obj = new JSONObject();
         JSONArray valid_menus = new JSONArray();
         JSONArray invalid_menus = new JSONArray();
@@ -185,12 +182,13 @@ public class Main {
                     int id = stack.pop();
                     if(visited[id-1]){
                         validMenu = false;
+                        children.put(id);
                     }
                     else{
                         visited[id-1] = true;
+                        children.put(id);
+                        stack = putNeighboursOnStack(arr, id, stack);
                     }
-                    children.put(id);
-                    stack = putNeighboursOnStack(arr, id, stack);
                 }
 
                 //Add the children array to the json_object
@@ -210,8 +208,7 @@ public class Main {
             obj.put("invalid_menus", invalid_menus);
 
         }catch(JSONException j){
-            j.printStackTrace();
-            System.exit(-1);
+            throw new JSONException("Error in parsing json in DFS_Validation");
         }
 
         return obj;
@@ -219,10 +216,14 @@ public class Main {
     }
 
     private static Stack<Integer> putNeighboursOnStack(JSONArray[] arr, int id, Stack<Integer> stack) throws JSONException{
+        //Consider: id = 10, perPage = 5;
+        //The item is on page 2 -> 10.0 / 5.0 = 2
+        //The offset is (mod 5) - 1, since we are dealing with arrays; 10 % 5 = 0; 0 - 1 = -1, so we have to wrap around back to 5
         int page = (int) Math.ceil((double) id / (double) perPage);
-        int offset = id % perPage;
+        int offset = (id % perPage) - 1;
+        if(offset < 0) offset = perPage - 1;
 
-        JSONArray children = arr[page].getJSONArray(offset);
+        JSONArray children = arr[page-1].getJSONObject(offset).getJSONArray("child_ids");
         for(int i = 0; i < children.length(); i++){
             stack.push(children.getInt(i));
         }
