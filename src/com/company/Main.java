@@ -132,13 +132,16 @@ public class Main {
             for (int i = 0; i < pages; i++) {
                 for (int j = 0; j < perPage; j++) {
                     JSONObject obj = arr[i].getJSONObject(j);
-                    if(obj.has("parent_id")){
-                        continue;
-                    }
-                    else{
+                    int id = obj.getInt("id");
+                    if(!obj.has("parent_id")){
                         //Thus, we have a root node; push the ID onto the stack
-                        stack.push(obj.getInt("id"));
+                        stack.push(id);
                     }
+                    if(id == total){
+                        //we are done, break;
+                        break;
+                    }
+
                 }
             }
         }catch(JSONException e){
