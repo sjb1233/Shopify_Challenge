@@ -71,6 +71,8 @@ public class Main {
         String tot = "total";
         String menus = "menus";
 
+        JSONArray[] arr = null;
+
         try {
             JSONObject json = getRequest(firstPage);
             JSONObject pagination = new JSONObject(json.get(pag));
@@ -80,7 +82,7 @@ public class Main {
             total = (int) total;
             perPage = (int) per_page;
 
-            JSONArray[] arr = new JSONArray[pages];
+            arr = new JSONArray[pages];
 
             arr[0] = new JSONArray(json.get(menus));
 
@@ -89,12 +91,12 @@ public class Main {
                 arr[i] = new JSONArray(json.get(menus));
             }
 
-            return arr;
-
         } catch(Exception e){
             e.printStackTrace();
             System.exit(-1);
         }
+
+        return arr;
 
     }
 
@@ -145,6 +147,8 @@ public class Main {
             e.printStackTrace();
             System.exit(-1);
         }
+
+        return stack;
     }
 
     private static JSONObject DFS_Validation(JSONArray[] arr, Stack<Integer> roots){
@@ -158,31 +162,72 @@ public class Main {
             //iterate through all the roots
             while (!roots.empty()) {
 
+                //Second stack for all the children
+                Stack<Integer> stack = new Stack<Integer>();
+
+                //Assume validMenu unless cycle is located; cycle -> a child will be visited twice
                 boolean validMenu = true;
 
                 JSONObject menu = new JSONObject();
+                JSONArray children = new JSONArray();
+
+                //pop the root, mark it as visited, then add its children to the children stack
+                //Also, add root_id to the menu json_object
                 int root_id = roots.pop();
-                visited[root_id] = true;
+                visited[root_id-1] = true;
                 menu.put("root_id", root_id);
 
+                stack = putNeighboursOnStack(arr, root_id, stack);
+
+                while(!stack.empty()){
+                    //While there are children of the root, this will run; if a node has been visited twice, then
+                    //we don't have a valid menu. Thus, I set validMenu to false
+                    int id = stack.pop();
+                    if(visited[id-1]){
+                        validMenu = false;
+                    }
+                    else{
+                        visited[id-1] = true;
+                    }
+                    children.put(id);
+                    stack = putNeighboursOnStack(arr, id, stack);
+                }
+
+                //Add the children array to the json_object
+                menu.put("children", children);
+
+                //if valid, add the menu object to the valid_menu arr; else, to the invalid_menu array
+                if(validMenu){
+                    valid_menus.put(menu);
+                }
+                else{
+                    invalid_menus.put(menu);
+                }
 
             }
+            //add the two arrays to the retured object at the end
+            obj.put("valid_menus", valid_menus);
+            obj.put("invalid_menus", invalid_menus);
 
         }catch(JSONException j){
             j.printStackTrace();
             System.exit(-1);
         }
 
-
         return obj;
 
     }
 
-    private static int[] getNeighbours(JSONArray[] arr, int id){
-        //int page = Math.ceil(((double) id) /
+    private static Stack<Integer> putNeighboursOnStack(JSONArray[] arr, int id, Stack<Integer> stack) throws JSONException{
+        int page = (int) Math.ceil((double) id / (double) perPage);
+        int offset = id % perPage;
 
+        JSONArray children = arr[page].getJSONArray(offset);
+        for(int i = 0; i < children.length(); i++){
+            stack.push(children.getInt(i));
+        }
 
-
+        return stack;
 
     }
 
