@@ -10,19 +10,19 @@ menues obtained from the API endpoints:
   
 # Main File:
 
-The src/com/company/main.java is the file with the code.
+The **src/com/company/main.java** is the file with the code.
 
-# Observations
+# Observations:
 
 Each menu item only has one parent; so, either two menus are distinct or they are
 part of one larger menu.
   
-# Build
+# Build:
 
 I used IntelliJ IDEA for the project. Make sure to include the java-json.jar in the 
 build path. This jar can be found in the jars/ folder
 
-# Runtime
+# Runtime:
 
 The setup uses at worst O(|V|), where the V is the set of menus (a.k.a. verticies).
 I iterate through all the verticies once to find the root nodes.
