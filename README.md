@@ -8,6 +8,10 @@ menues obtained from the API endpoints:
 * Challenge 2
   * https://backend-challenge-summer-2018.herokuapp.com/challenges.json?id=2&page=1
   
+# Main File:
+
+The src/com/company/main.java is the file with the code.
+
 # Observations
 
 Each menu item only has one parent; so, either two menus are distinct or they are
